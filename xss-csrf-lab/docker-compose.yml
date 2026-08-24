@@ -1,7 +1,9 @@
 version: "3.8"
 
+# LocalStack Community image (not localstack-pro).
+# WAFv2 is Pro-only; this lab uses AWS WAF Classic (waf / waf-regional).
+
 services:
-  # اپلیکیشن آسیب‌پذیر
   webapp:
     build: ./app
     container_name: vuln-webapp
@@ -10,21 +12,48 @@ services:
     networks:
       - lab-net
 
-  # LocalStack برای شبیه‌سازی AWS
+  waf-proxy:
+    build: ./app/waf-proxy
+    container_name: xss-csrf-waf-proxy
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - UPSTREAM_HOST=webapp
+      - UPSTREAM_PORT=3000
+      - WEB_ACL_NAME=XSS-CSRF-Protection
+    depends_on:
+      - webapp
+    networks:
+      - lab-net
+
+  attacker:
+    image: python:3.12-alpine
+    container_name: csrf-attacker
+    working_dir: /pages
+    command: python -m http.server 9999
+    volumes:
+      - ./exploit:/pages:ro
+    ports:
+      - "9999:9999"
+    networks:
+      - lab-net
+
   localstack:
     image: localstack/localstack:3.5
     container_name: localstack
     ports:
       - "4566:4566"
     environment:
-      - SERVICES=wafv2,cloudwatch,logs
+      - SERVICES=waf,waf-regional,cloudwatch,logs
       - DEBUG=1
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "./waf:/etc/localstack/init/ready.d/waf"
+      - "./waf/setup-waf.sh:/etc/localstack/init/ready.d/01-setup-waf.sh"
+      - "./waf/rules:/etc/localstack/init/ready.d/waf/rules"
     networks:
       - lab-net
 

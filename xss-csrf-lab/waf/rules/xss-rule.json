@@ -1,62 +1,21 @@
 {
-    "Name": "Block-XSS-Rule",
-    "Priority": 1,
-    "Statement": {
-        "OrStatement": {
-            "Statements": [
-                {
-                    "XssMatchStatement": {
-                        "FieldToMatch": {
-                            "AllQueryArguments": {}
-                        },
-                        "TextTransformations": [
-                            {
-                                "Priority": 0,
-                                "Type": "URL_DECODE"
-                            },
-                            {
-                                "Priority": 1,
-                                "Type": "HTML_ENTITY_DECODE"
-                            },
-                            {
-                                "Priority": 2,
-                                "Type": "LOWERCASE"
-                            }
-                        ]
-                    }
-                },
-                {
-                    "XssMatchStatement": {
-                        "FieldToMatch": {
-                            "Body": {
-                                "OversizeHandling": "CONTINUE"
-                            }
-                        },
-                        "TextTransformations": [
-                            {
-                                "Priority": 0,
-                                "Type": "URL_DECODE"
-                            },
-                            {
-                                "Priority": 1,
-                                "Type": "HTML_ENTITY_DECODE"
-                            },
-                            {
-                                "Priority": 2,
-                                "Type": "LOWERCASE"
-                            }
-                        ]
-                    }
-                }
-            ]
-        }
-    },
-    "Action": {
-        "Block": {}
-    },
-    "VisibilityConfig": {
-        "SampledRequestsEnabled": true,
-        "CloudWatchMetricsEnabled": true,
-        "MetricName": "BlockXSSRule"
+  "Name": "Block-XSS-Rule",
+  "Api": "waf-regional",
+  "Note": "AWS WAF Classic XssMatchSet. LocalStack Community does not support WAFv2 XssMatchStatement.",
+  "MetricName": "BlockXSSRule",
+  "Predicates": [
+    {
+      "Negated": false,
+      "Type": "XssMatch",
+      "XssMatchSet": {
+        "Name": "XSS-Query-Uri-Body",
+        "XssMatchTuples": [
+          { "FieldToMatch": { "Type": "QUERY_STRING" }, "TextTransformation": "URL_DECODE" },
+          { "FieldToMatch": { "Type": "URI" }, "TextTransformation": "URL_DECODE" },
+          { "FieldToMatch": { "Type": "BODY" }, "TextTransformation": "URL_DECODE" }
+        ]
+      }
     }
+  ],
+  "Action": "BLOCK"
 }
