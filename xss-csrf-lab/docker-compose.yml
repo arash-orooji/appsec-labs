@@ -1,8 +1,3 @@
-version: "3.8"
-
-# LocalStack Community image (not localstack-pro).
-# WAFv2 is Pro-only; this lab uses AWS WAF Classic (waf / waf-regional).
-
 services:
   webapp:
     build: ./app
@@ -39,13 +34,14 @@ services:
     networks:
       - lab-net
 
+  # LocalStack Community: WAFv2 and WAF Classic APIs both return 501 (Pro-only).
   localstack:
     image: localstack/localstack:3.5
     container_name: localstack
     ports:
       - "4566:4566"
     environment:
-      - SERVICES=waf,waf-regional,cloudwatch,logs
+      - SERVICES=cloudwatch,logs
       - DEBUG=1
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=test
@@ -54,6 +50,19 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./waf/setup-waf.sh:/etc/localstack/init/ready.d/01-setup-waf.sh"
       - "./waf/rules:/etc/localstack/init/ready.d/waf/rules"
+    depends_on:
+      - waf-classic
+    networks:
+      - lab-net
+
+  # AWS WAF Classic (waf-regional) API used by setup-waf.sh on Community.
+  waf-classic:
+    build: ./waf/classic-api
+    container_name: waf-classic
+    ports:
+      - "4568:4568"
+    environment:
+      - AWS_DEFAULT_REGION=us-east-1
     networks:
       - lab-net
 

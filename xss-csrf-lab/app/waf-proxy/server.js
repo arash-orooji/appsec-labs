@@ -200,13 +200,18 @@ const server = http.createServer(async (req, res) => {
         method: req.method,
         path: req.url,
         headers,
+        timeout: 10_000,
       },
       (upRes) => {
         res.writeHead(upRes.statusCode || 502, upRes.headers);
         upRes.pipe(res);
       }
     );
+    upstream.on('timeout', () => {
+      upstream.destroy(new Error('upstream timeout'));
+    });
     upstream.on('error', (err) => {
+      if (res.headersSent) return;
       const msg = `Upstream error: ${err.message}`;
       res.writeHead(502, { 'Content-Type': 'text/plain', 'Content-Length': Buffer.byteLength(msg) });
       res.end(msg);
