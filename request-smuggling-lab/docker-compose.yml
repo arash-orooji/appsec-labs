@@ -1,0 +1,62 @@
+services:
+  backend:
+    build: ./app/backend
+    container_name: smuggle-backend
+    environment:
+      - PORT=3001
+      - ADMIN_SECRET=FLAG{request-smuggling-success}
+    networks:
+      - smuggle-net
+    # not published — only reachable via frontend
+
+  # Vulnerable CL.TE proxy (smuggling works here)
+  frontend:
+    build: ./app/frontend
+    container_name: smuggle-frontend
+    ports:
+      - "3100:3100"
+    environment:
+      - PORT=3100
+      - BACKEND_HOST=backend
+      - BACKEND_PORT=3001
+    depends_on:
+      - backend
+    networks:
+      - smuggle-net
+
+  # Gate that enforces the same rules as the LocalStack WebACL
+  waf-proxy:
+    build: ./app/waf-proxy
+    container_name: smuggle-waf-proxy
+    ports:
+      - "8180:8180"
+    environment:
+      - PORT=8180
+      - UPSTREAM_HOST=frontend
+      - UPSTREAM_PORT=3100
+    depends_on:
+      - frontend
+    networks:
+      - smuggle-net
+
+  localstack:
+    image: localstack/localstack:3.5
+    container_name: smuggle-localstack
+    ports:
+      - "4567:4566"
+    environment:
+      - SERVICES=wafv2,cloudwatch,logs
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./waf/setup-waf.sh:/etc/localstack/init/ready.d/01-setup-waf.sh"
+      - "./waf/rules:/etc/localstack/init/ready.d/waf/rules"
+    networks:
+      - smuggle-net
+
+networks:
+  smuggle-net:
+    driver: bridge

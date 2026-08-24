@@ -1,0 +1,52 @@
+{
+  "Name": "Block-Malformed-Content-Length",
+  "Priority": 3,
+  "Statement": {
+    "OrStatement": {
+      "Statements": [
+        {
+          "ByteMatchStatement": {
+            "SearchString": ",",
+            "FieldToMatch": {
+              "SingleHeader": {
+                "Name": "content-length"
+              }
+            },
+            "TextTransformations": [
+              {
+                "Priority": 0,
+                "Type": "NONE"
+              }
+            ],
+            "PositionalConstraint": "CONTAINS"
+          }
+        },
+        {
+          "ByteMatchStatement": {
+            "SearchString": " ",
+            "FieldToMatch": {
+              "SingleHeader": {
+                "Name": "content-length"
+              }
+            },
+            "TextTransformations": [
+              {
+                "Priority": 0,
+                "Type": "NONE"
+              }
+            ],
+            "PositionalConstraint": "CONTAINS"
+          }
+        }
+      ]
+    }
+  },
+  "Action": {
+    "Block": {}
+  },
+  "VisibilityConfig": {
+    "SampledRequestsEnabled": true,
+    "CloudWatchMetricsEnabled": true,
+    "MetricName": "BlockMalformedContentLength"
+  }
+}

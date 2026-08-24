@@ -1,0 +1,54 @@
+{
+    "Name": "Block-CSRF-Rule",
+    "Priority": 2,
+    "Statement": {
+        "AndStatement": {
+            "Statements": [
+                {
+                    "ByteMatchStatement": {
+                        "SearchString": "POST",
+                        "FieldToMatch": {
+                            "Method": {}
+                        },
+                        "TextTransformations": [
+                            {
+                                "Priority": 0,
+                                "Type": "NONE"
+                            }
+                        ],
+                        "PositionalConstraint": "EXACTLY"
+                    }
+                },
+                {
+                    "NotStatement": {
+                        "Statement": {
+                            "ByteMatchStatement": {
+                                "SearchString": "aHR0cDovL2xvY2FsaG9zdDozMDAw",
+                                "FieldToMatch": {
+                                    "SingleHeader": {
+                                        "Name": "origin"
+                                    }
+                                },
+                                "TextTransformations": [
+                                    {
+                                        "Priority": 0,
+                                        "Type": "LOWERCASE"
+                                    }
+                                ],
+                                "PositionalConstraint": "STARTS_WITH"
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "Action": {
+        "Block": {}
+    },
+    "VisibilityConfig": {
+        "SampledRequestsEnabled": true,
+        "CloudWatchMetricsEnabled": true,
+        "MetricName": "BlockCSRFRule"
+    }
+}

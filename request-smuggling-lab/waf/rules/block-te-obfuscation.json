@@ -1,0 +1,86 @@
+{
+  "Name": "Block-TE-Obfuscation",
+  "Priority": 2,
+  "Statement": {
+    "OrStatement": {
+      "Statements": [
+        {
+          "ByteMatchStatement": {
+            "SearchString": "chunked,",
+            "FieldToMatch": {
+              "SingleHeader": {
+                "Name": "transfer-encoding"
+              }
+            },
+            "TextTransformations": [
+              {
+                "Priority": 0,
+                "Type": "LOWERCASE"
+              }
+            ],
+            "PositionalConstraint": "CONTAINS"
+          }
+        },
+        {
+          "ByteMatchStatement": {
+            "SearchString": ",chunked",
+            "FieldToMatch": {
+              "SingleHeader": {
+                "Name": "transfer-encoding"
+              }
+            },
+            "TextTransformations": [
+              {
+                "Priority": 0,
+                "Type": "LOWERCASE"
+              }
+            ],
+            "PositionalConstraint": "CONTAINS"
+          }
+        },
+        {
+          "ByteMatchStatement": {
+            "SearchString": "identity",
+            "FieldToMatch": {
+              "SingleHeader": {
+                "Name": "transfer-encoding"
+              }
+            },
+            "TextTransformations": [
+              {
+                "Priority": 0,
+                "Type": "LOWERCASE"
+              }
+            ],
+            "PositionalConstraint": "CONTAINS"
+          }
+        },
+        {
+          "ByteMatchStatement": {
+            "SearchString": "xchunked",
+            "FieldToMatch": {
+              "SingleHeader": {
+                "Name": "transfer-encoding"
+              }
+            },
+            "TextTransformations": [
+              {
+                "Priority": 0,
+                "Type": "LOWERCASE"
+              }
+            ],
+            "PositionalConstraint": "CONTAINS"
+          }
+        }
+      ]
+    }
+  },
+  "Action": {
+    "Block": {}
+  },
+  "VisibilityConfig": {
+    "SampledRequestsEnabled": true,
+    "CloudWatchMetricsEnabled": true,
+    "MetricName": "BlockTEObfuscation"
+  }
+}

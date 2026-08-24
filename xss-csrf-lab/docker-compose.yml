@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  # اپلیکیشن آسیب‌پذیر
+  webapp:
+    build: ./app
+    container_name: vuln-webapp
+    ports:
+      - "3000:3000"
+    networks:
+      - lab-net
+
+  # LocalStack برای شبیه‌سازی AWS
+  localstack:
+    image: localstack/localstack:3.5
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=wafv2,cloudwatch,logs
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./waf:/etc/localstack/init/ready.d/waf"
+    networks:
+      - lab-net
+
+networks:
+  lab-net:
+    driver: bridge
