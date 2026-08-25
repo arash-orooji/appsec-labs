@@ -97,6 +97,37 @@ if [[ -n "${EXISTING_ID:-}" && "$EXISTING_ID" != "None" ]]; then
   exit 0
 fi
 
+insert_byte_match() {
+  local set_id="$1"
+  local header="$2"
+  local target="$3"
+  local transform="${4:-LOWERCASE}"
+  local pos="${5:-CONTAINS}"
+  local tok jsonfile
+  tok="$(token)"
+  jsonfile="$(mktemp)"
+  python3 - "$set_id" "$header" "$target" "$transform" "$pos" "$tok" "$jsonfile" <<'PY'
+import json, sys
+set_id, header, target, transform, pos, tok, path = sys.argv[1:]
+with open(path, "w", encoding="utf-8") as fh:
+    json.dump({
+        "ByteMatchSetId": set_id,
+        "ChangeToken": tok,
+        "Updates": [{
+            "Action": "INSERT",
+            "ByteMatchTuple": {
+                "FieldToMatch": {"Type": "HEADER", "Data": header},
+                "TargetString": target,
+                "TextTransformation": transform,
+                "PositionalConstraint": pos,
+            },
+        }],
+    }, fh)
+PY
+  aws_waf update-byte-match-set --cli-input-json "file://${jsonfile}" >/dev/null
+  rm -f "$jsonfile"
+}
+
 echo "==> SizeConstraintSet Content-Length present (GE 0)"
 CL_SIZE_ID="$(aws_waf create-size-constraint-set --name Content-Length-Present --change-token "$(token)" --query 'SizeConstraintSet.SizeConstraintSetId' --output text)"
 aws_waf update-size-constraint-set \
@@ -106,36 +137,19 @@ aws_waf update-size-constraint-set \
 
 echo "==> ByteMatchSet Transfer-Encoding CONTAINS chunked"
 TE_CHUNKED_ID="$(aws_waf create-byte-match-set --name TE-Chunked --change-token "$(token)" --query 'ByteMatchSet.ByteMatchSetId' --output text)"
-aws_waf update-byte-match-set \
-  --byte-match-set-id "$TE_CHUNKED_ID" \
-  --change-token "$(token)" \
-  --updates 'Action=INSERT,ByteMatchTuple={FieldToMatch={Type=HEADER,Data=transfer-encoding},TargetString=chunked,TextTransformation=LOWERCASE,PositionalConstraint=CONTAINS}' >/dev/null
+insert_byte_match "$TE_CHUNKED_ID" "transfer-encoding" "chunked"
 
 echo "==> ByteMatchSet TE obfuscation (identity / comma / xchunked)"
 TE_OBF_ID="$(aws_waf create-byte-match-set --name TE-Obfuscation --change-token "$(token)" --query 'ByteMatchSet.ByteMatchSetId' --output text)"
-aws_waf update-byte-match-set \
-  --byte-match-set-id "$TE_OBF_ID" \
-  --change-token "$(token)" \
-  --updates 'Action=INSERT,ByteMatchTuple={FieldToMatch={Type=HEADER,Data=transfer-encoding},TargetString=identity,TextTransformation=LOWERCASE,PositionalConstraint=CONTAINS}' >/dev/null
-aws_waf update-byte-match-set \
-  --byte-match-set-id "$TE_OBF_ID" \
-  --change-token "$(token)" \
-  --updates 'Action=INSERT,ByteMatchTuple={FieldToMatch={Type=HEADER,Data=transfer-encoding},TargetString=chunked,,TextTransformation=LOWERCASE,PositionalConstraint=CONTAINS}' >/dev/null
-aws_waf update-byte-match-set \
-  --byte-match-set-id "$TE_OBF_ID" \
-  --change-token "$(token)" \
-  --updates 'Action=INSERT,ByteMatchTuple={FieldToMatch={Type=HEADER,Data=transfer-encoding},TargetString=,chunked,TextTransformation=LOWERCASE,PositionalConstraint=CONTAINS}' >/dev/null
-aws_waf update-byte-match-set \
-  --byte-match-set-id "$TE_OBF_ID" \
-  --change-token "$(token)" \
-  --updates 'Action=INSERT,ByteMatchTuple={FieldToMatch={Type=HEADER,Data=transfer-encoding},TargetString=xchunked,TextTransformation=LOWERCASE,PositionalConstraint=CONTAINS}' >/dev/null
+insert_byte_match "$TE_OBF_ID" "transfer-encoding" "identity"
+insert_byte_match "$TE_OBF_ID" "transfer-encoding" "chunked,"
+insert_byte_match "$TE_OBF_ID" "transfer-encoding" ",chunked"
+insert_byte_match "$TE_OBF_ID" "transfer-encoding" "xchunked"
 
-echo "==> ByteMatchSet malformed Content-Length (comma or space)"
+echo "==> ByteMatchSet malformed Content-Length (comma)"
 CL_BAD_ID="$(aws_waf create-byte-match-set --name Malformed-Content-Length --change-token "$(token)" --query 'ByteMatchSet.ByteMatchSetId' --output text)"
-aws_waf update-byte-match-set \
-  --byte-match-set-id "$CL_BAD_ID" \
-  --change-token "$(token)" \
-  --updates 'Action=INSERT,ByteMatchTuple={FieldToMatch={Type=HEADER,Data=content-length},TargetString=,,TextTransformation=NONE,PositionalConstraint=CONTAINS}' >/dev/null
+insert_byte_match "$CL_BAD_ID" "content-length" "," "NONE"
+
 
 echo "==> Rule Block-CL-TE-Smuggling (CL present AND TE chunked)"
 CLTE_RULE_ID="$(aws_waf create-rule --name Block-CL-TE-Smuggling --metric-name BlockCLTESmuggling --change-token "$(token)" --query Rule.RuleId --output text)"
