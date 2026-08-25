@@ -1,54 +1,60 @@
 {
-    "Name": "Block-CSRF-Rule",
-    "Priority": 2,
-    "Statement": {
-        "AndStatement": {
-            "Statements": [
-                {
-                    "ByteMatchStatement": {
-                        "SearchString": "POST",
-                        "FieldToMatch": {
-                            "Method": {}
-                        },
-                        "TextTransformations": [
-                            {
-                                "Priority": 0,
-                                "Type": "NONE"
-                            }
-                        ],
-                        "PositionalConstraint": "EXACTLY"
-                    }
-                },
-                {
-                    "NotStatement": {
-                        "Statement": {
-                            "ByteMatchStatement": {
-                                "SearchString": "aHR0cDovL2xvY2FsaG9zdDozMDAw",
-                                "FieldToMatch": {
-                                    "SingleHeader": {
-                                        "Name": "origin"
-                                    }
-                                },
-                                "TextTransformations": [
-                                    {
-                                        "Priority": 0,
-                                        "Type": "LOWERCASE"
-                                    }
-                                ],
-                                "PositionalConstraint": "STARTS_WITH"
-                            }
-                        }
-                    }
-                }
-            ]
-        }
+  "Name": "Block-CSRF-Rule",
+  "Api": "waf-regional",
+  "Note": "AWS WAF Classic rule: POST AND URI /update-email AND NOT Origin starting with the lab origin. LocalStack Community does not support WAFv2 AndStatement/NotStatement.",
+  "MetricName": "BlockCSRFRule",
+  "Predicates": [
+    {
+      "Negated": false,
+      "Type": "ByteMatch",
+      "ByteMatchSet": {
+        "Name": "HTTP-POST-Method",
+        "ByteMatchTuples": [
+          {
+            "FieldToMatch": { "Type": "METHOD" },
+            "TargetString": "POST",
+            "TextTransformation": "NONE",
+            "PositionalConstraint": "EXACTLY"
+          }
+        ]
+      }
     },
-    "Action": {
-        "Block": {}
+    {
+      "Negated": false,
+      "Type": "ByteMatch",
+      "ByteMatchSet": {
+        "Name": "Update-Email-URI",
+        "ByteMatchTuples": [
+          {
+            "FieldToMatch": { "Type": "URI" },
+            "TargetString": "/update-email",
+            "TextTransformation": "LOWERCASE",
+            "PositionalConstraint": "CONTAINS"
+          }
+        ]
+      }
     },
-    "VisibilityConfig": {
-        "SampledRequestsEnabled": true,
-        "CloudWatchMetricsEnabled": true,
-        "MetricName": "BlockCSRFRule"
+    {
+      "Negated": true,
+      "Type": "ByteMatch",
+      "ByteMatchSet": {
+        "Name": "Legitimate-Origin",
+        "ByteMatchTuples": [
+          {
+            "FieldToMatch": { "Type": "HEADER", "Data": "origin" },
+            "TargetString": "http://localhost:3000",
+            "TextTransformation": "LOWERCASE",
+            "PositionalConstraint": "STARTS_WITH"
+          },
+          {
+            "FieldToMatch": { "Type": "HEADER", "Data": "origin" },
+            "TargetString": "http://localhost:8080",
+            "TextTransformation": "LOWERCASE",
+            "PositionalConstraint": "STARTS_WITH"
+          }
+        ]
+      }
     }
+  ],
+  "Action": "BLOCK"
 }
