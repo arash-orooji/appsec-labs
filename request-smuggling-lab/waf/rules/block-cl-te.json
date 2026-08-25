@@ -1,52 +1,39 @@
 {
   "Name": "Block-CL-TE-Smuggling",
-  "Priority": 1,
-  "Statement": {
-    "AndStatement": {
-      "Statements": [
-        {
-          "SizeConstraintStatement": {
-            "FieldToMatch": {
-              "SingleHeader": {
-                "Name": "content-length"
-              }
-            },
+  "Api": "waf-regional",
+  "Note": "AWS WAF Classic: Content-Length present AND Transfer-Encoding contains chunked. LocalStack Community does not support WAFv2 AndStatement.",
+  "MetricName": "BlockCLTESmuggling",
+  "Predicates": [
+    {
+      "Negated": false,
+      "Type": "SizeConstraint",
+      "SizeConstraintSet": {
+        "Name": "Content-Length-Present",
+        "SizeConstraints": [
+          {
+            "FieldToMatch": { "Type": "HEADER", "Data": "content-length" },
+            "TextTransformation": "NONE",
             "ComparisonOperator": "GE",
-            "Size": 0,
-            "TextTransformations": [
-              {
-                "Priority": 0,
-                "Type": "NONE"
-              }
-            ]
+            "Size": 0
           }
-        },
-        {
-          "ByteMatchStatement": {
-            "SearchString": "chunked",
-            "FieldToMatch": {
-              "SingleHeader": {
-                "Name": "transfer-encoding"
-              }
-            },
-            "TextTransformations": [
-              {
-                "Priority": 0,
-                "Type": "LOWERCASE"
-              }
-            ],
+        ]
+      }
+    },
+    {
+      "Negated": false,
+      "Type": "ByteMatch",
+      "ByteMatchSet": {
+        "Name": "TE-Chunked",
+        "ByteMatchTuples": [
+          {
+            "FieldToMatch": { "Type": "HEADER", "Data": "transfer-encoding" },
+            "TargetString": "chunked",
+            "TextTransformation": "LOWERCASE",
             "PositionalConstraint": "CONTAINS"
           }
-        }
-      ]
+        ]
+      }
     }
-  },
-  "Action": {
-    "Block": {}
-  },
-  "VisibilityConfig": {
-    "SampledRequestsEnabled": true,
-    "CloudWatchMetricsEnabled": true,
-    "MetricName": "BlockCLTESmuggling"
-  }
+  ],
+  "Action": "BLOCK"
 }

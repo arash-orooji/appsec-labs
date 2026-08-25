@@ -7,9 +7,7 @@ services:
       - ADMIN_SECRET=FLAG{request-smuggling-success}
     networks:
       - smuggle-net
-    # not published — only reachable via frontend
 
-  # Vulnerable CL.TE proxy (smuggling works here)
   frontend:
     build: ./app/frontend
     container_name: smuggle-frontend
@@ -24,7 +22,6 @@ services:
     networks:
       - smuggle-net
 
-  # Gate that enforces the same rules as the LocalStack WebACL
   waf-proxy:
     build: ./app/waf-proxy
     container_name: smuggle-waf-proxy
@@ -34,18 +31,20 @@ services:
       - PORT=8180
       - UPSTREAM_HOST=frontend
       - UPSTREAM_PORT=3100
+      - WEB_ACL_NAME=Request-Smuggling-Protection
     depends_on:
       - frontend
     networks:
       - smuggle-net
 
+  # LocalStack Community: WAFv2 and WAF Classic APIs both return 501 (Pro-only).
   localstack:
     image: localstack/localstack:3.5
     container_name: smuggle-localstack
     ports:
       - "4567:4566"
     environment:
-      - SERVICES=wafv2,cloudwatch,logs
+      - SERVICES=cloudwatch,logs
       - DEBUG=1
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=test
@@ -54,6 +53,19 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./waf/setup-waf.sh:/etc/localstack/init/ready.d/01-setup-waf.sh"
       - "./waf/rules:/etc/localstack/init/ready.d/waf/rules"
+    depends_on:
+      - waf-classic
+    networks:
+      - smuggle-net
+
+  # AWS WAF Classic (waf-regional) API used by setup-waf.sh on Community.
+  waf-classic:
+    build: ./waf/classic-api
+    container_name: smuggle-waf-classic
+    ports:
+      - "4569:4568"
+    environment:
+      - PORT=4568
     networks:
       - smuggle-net
 

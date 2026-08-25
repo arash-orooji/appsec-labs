@@ -89,8 +89,9 @@ function evaluateWaf(rawHead) {
 function blockedResponse(findings) {
   const body = JSON.stringify(
     {
-      message: 'Blocked by AWS WAF (lab simulation)',
-      webAcl: 'Request-Smuggling-Protection',
+      message: 'Blocked by AWS WAF Classic (lab simulation)',
+      webAcl: process.env.WEB_ACL_NAME || 'Request-Smuggling-Protection',
+      api: 'waf-regional',
       matches: findings,
     },
     null,
@@ -147,4 +148,5 @@ const server = net.createServer((socket) => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`[waf-proxy] listening on ${PORT}, upstream ${UPSTREAM_HOST}:${UPSTREAM_PORT}`);
+  console.log('[waf-proxy] engine=AWS WAF Classic (waf-regional) — LocalStack Community (no WAFv2)');
 });
