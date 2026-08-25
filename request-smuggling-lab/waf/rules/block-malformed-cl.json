@@ -1,52 +1,24 @@
 {
   "Name": "Block-Malformed-Content-Length",
-  "Priority": 3,
-  "Statement": {
-    "OrStatement": {
-      "Statements": [
-        {
-          "ByteMatchStatement": {
-            "SearchString": ",",
-            "FieldToMatch": {
-              "SingleHeader": {
-                "Name": "content-length"
-              }
-            },
-            "TextTransformations": [
-              {
-                "Priority": 0,
-                "Type": "NONE"
-              }
-            ],
+  "Api": "waf-regional",
+  "Note": "AWS WAF Classic ByteMatch on Content-Length containing a comma. LocalStack Community does not support WAFv2 OrStatement.",
+  "MetricName": "BlockMalformedContentLength",
+  "Predicates": [
+    {
+      "Negated": false,
+      "Type": "ByteMatch",
+      "ByteMatchSet": {
+        "Name": "Malformed-Content-Length",
+        "ByteMatchTuples": [
+          {
+            "FieldToMatch": { "Type": "HEADER", "Data": "content-length" },
+            "TargetString": ",",
+            "TextTransformation": "NONE",
             "PositionalConstraint": "CONTAINS"
           }
-        },
-        {
-          "ByteMatchStatement": {
-            "SearchString": " ",
-            "FieldToMatch": {
-              "SingleHeader": {
-                "Name": "content-length"
-              }
-            },
-            "TextTransformations": [
-              {
-                "Priority": 0,
-                "Type": "NONE"
-              }
-            ],
-            "PositionalConstraint": "CONTAINS"
-          }
-        }
-      ]
+        ]
+      }
     }
-  },
-  "Action": {
-    "Block": {}
-  },
-  "VisibilityConfig": {
-    "SampledRequestsEnabled": true,
-    "CloudWatchMetricsEnabled": true,
-    "MetricName": "BlockMalformedContentLength"
-  }
+  ],
+  "Action": "BLOCK"
 }

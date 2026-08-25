@@ -1,86 +1,42 @@
 {
   "Name": "Block-TE-Obfuscation",
-  "Priority": 2,
-  "Statement": {
-    "OrStatement": {
-      "Statements": [
-        {
-          "ByteMatchStatement": {
-            "SearchString": "chunked,",
-            "FieldToMatch": {
-              "SingleHeader": {
-                "Name": "transfer-encoding"
-              }
-            },
-            "TextTransformations": [
-              {
-                "Priority": 0,
-                "Type": "LOWERCASE"
-              }
-            ],
+  "Api": "waf-regional",
+  "Note": "AWS WAF Classic ByteMatchSet is OR across tuples. LocalStack Community does not support WAFv2 OrStatement.",
+  "MetricName": "BlockTEObfuscation",
+  "Predicates": [
+    {
+      "Negated": false,
+      "Type": "ByteMatch",
+      "ByteMatchSet": {
+        "Name": "TE-Obfuscation",
+        "ByteMatchTuples": [
+          {
+            "FieldToMatch": { "Type": "HEADER", "Data": "transfer-encoding" },
+            "TargetString": "identity",
+            "TextTransformation": "LOWERCASE",
+            "PositionalConstraint": "CONTAINS"
+          },
+          {
+            "FieldToMatch": { "Type": "HEADER", "Data": "transfer-encoding" },
+            "TargetString": "chunked,",
+            "TextTransformation": "LOWERCASE",
+            "PositionalConstraint": "CONTAINS"
+          },
+          {
+            "FieldToMatch": { "Type": "HEADER", "Data": "transfer-encoding" },
+            "TargetString": ",chunked",
+            "TextTransformation": "LOWERCASE",
+            "PositionalConstraint": "CONTAINS"
+          },
+          {
+            "FieldToMatch": { "Type": "HEADER", "Data": "transfer-encoding" },
+            "TargetString": "xchunked",
+            "TextTransformation": "LOWERCASE",
             "PositionalConstraint": "CONTAINS"
           }
-        },
-        {
-          "ByteMatchStatement": {
-            "SearchString": ",chunked",
-            "FieldToMatch": {
-              "SingleHeader": {
-                "Name": "transfer-encoding"
-              }
-            },
-            "TextTransformations": [
-              {
-                "Priority": 0,
-                "Type": "LOWERCASE"
-              }
-            ],
-            "PositionalConstraint": "CONTAINS"
-          }
-        },
-        {
-          "ByteMatchStatement": {
-            "SearchString": "identity",
-            "FieldToMatch": {
-              "SingleHeader": {
-                "Name": "transfer-encoding"
-              }
-            },
-            "TextTransformations": [
-              {
-                "Priority": 0,
-                "Type": "LOWERCASE"
-              }
-            ],
-            "PositionalConstraint": "CONTAINS"
-          }
-        },
-        {
-          "ByteMatchStatement": {
-            "SearchString": "xchunked",
-            "FieldToMatch": {
-              "SingleHeader": {
-                "Name": "transfer-encoding"
-              }
-            },
-            "TextTransformations": [
-              {
-                "Priority": 0,
-                "Type": "LOWERCASE"
-              }
-            ],
-            "PositionalConstraint": "CONTAINS"
-          }
-        }
-      ]
+        ]
+      }
     }
-  },
-  "Action": {
-    "Block": {}
-  },
-  "VisibilityConfig": {
-    "SampledRequestsEnabled": true,
-    "CloudWatchMetricsEnabled": true,
-    "MetricName": "BlockTEObfuscation"
-  }
+  ],
+  "Action": "BLOCK"
 }
