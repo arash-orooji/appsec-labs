@@ -1,0 +1,24 @@
+{
+  "Name": "Block-Oversized-Cookie",
+  "Api": "waf-regional",
+  "Note": "Stops already-planted cookie bombs: Cookie header at or above 4096 bytes.",
+  "MetricName": "BlockOversizedCookie",
+  "Predicates": [
+    {
+      "Negated": false,
+      "Type": "SizeConstraint",
+      "SizeConstraintSet": {
+        "Name": "Oversized-Cookie-Header",
+        "SizeConstraints": [
+          {
+            "FieldToMatch": { "Type": "HEADER", "Data": "cookie" },
+            "TextTransformation": "NONE",
+            "ComparisonOperator": "GE",
+            "Size": 4096
+          }
+        ]
+      }
+    }
+  ],
+  "Action": "BLOCK"
+}

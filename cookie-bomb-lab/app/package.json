@@ -1,0 +1,12 @@
+{
+  "name": "cookie-bomb-lab",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --max-http-header-size=8192 server.js"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.6",
+    "express": "^4.19.2"
+  }
+}
