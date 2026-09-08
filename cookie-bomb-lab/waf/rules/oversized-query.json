@@ -1,0 +1,24 @@
+{
+  "Name": "Block-Oversized-Query",
+  "Api": "waf-regional",
+  "Note": "Stops cookie-bomb planting: tracking query strings at or above 1024 bytes.",
+  "MetricName": "BlockOversizedQuery",
+  "Predicates": [
+    {
+      "Negated": false,
+      "Type": "SizeConstraint",
+      "SizeConstraintSet": {
+        "Name": "Oversized-Query-String",
+        "SizeConstraints": [
+          {
+            "FieldToMatch": { "Type": "QUERY_STRING" },
+            "TextTransformation": "NONE",
+            "ComparisonOperator": "GE",
+            "Size": 1024
+          }
+        ]
+      }
+    }
+  ],
+  "Action": "BLOCK"
+}

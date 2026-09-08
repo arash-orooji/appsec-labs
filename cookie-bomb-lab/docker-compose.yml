@@ -1,0 +1,73 @@
+services:
+  webapp:
+    build: ./app
+    container_name: cookie-bomb-webapp
+    ports:
+      - "3200:3200"
+    environment:
+      - PORT=3200
+      - HEADER_LIMIT=8192
+      - NODE_OPTIONS=--max-http-header-size=8192
+    networks:
+      - bomb-net
+
+  waf-proxy:
+    build: ./app/waf-proxy
+    container_name: cookie-bomb-waf-proxy
+    ports:
+      - "8280:8280"
+    environment:
+      - PORT=8280
+      - UPSTREAM_HOST=webapp
+      - UPSTREAM_PORT=3200
+      - WEB_ACL_NAME=Cookie-Bomb-Protection
+    depends_on:
+      - webapp
+    networks:
+      - bomb-net
+
+  attacker:
+    image: python:3.12-alpine
+    container_name: cookie-bomb-attacker
+    working_dir: /pages
+    command: python -m http.server 9299
+    volumes:
+      - ./exploit:/pages:ro
+    ports:
+      - "9299:9299"
+    networks:
+      - bomb-net
+
+  localstack:
+    image: localstack/localstack:3.5
+    container_name: cookie-bomb-localstack
+    ports:
+      - "4570:4566"
+    environment:
+      - SERVICES=cloudwatch,logs
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./waf/setup-waf.sh:/etc/localstack/init/ready.d/01-setup-waf.sh"
+      - "./waf/rules:/etc/localstack/init/ready.d/waf/rules"
+    depends_on:
+      - waf-classic
+    networks:
+      - bomb-net
+
+  waf-classic:
+    build: ./waf/classic-api
+    container_name: cookie-bomb-waf-classic
+    ports:
+      - "4571:4571"
+    environment:
+      - PORT=4571
+    networks:
+      - bomb-net
+
+networks:
+  bomb-net:
+    driver: bridge
