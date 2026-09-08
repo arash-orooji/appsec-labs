@@ -1,0 +1,58 @@
+services:
+  webapp:
+    build: ./app
+    container_name: cookie-poisoning-webapp
+    ports:
+      - "3400:3400"
+    environment:
+      - PORT=3400
+    networks:
+      - poison-net
+
+  waf-proxy:
+    build: ./app/waf-proxy
+    container_name: cookie-poisoning-waf-proxy
+    ports:
+      - "8480:8480"
+    environment:
+      - PORT=8480
+      - UPSTREAM_HOST=webapp
+      - UPSTREAM_PORT=3400
+      - WEB_ACL_NAME=Cookie-Poisoning-Protection
+    depends_on:
+      - webapp
+    networks:
+      - poison-net
+
+  localstack:
+    image: localstack/localstack:3.5
+    container_name: cookie-poisoning-localstack
+    ports:
+      - "4574:4566"
+    environment:
+      - SERVICES=cloudwatch,logs
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./waf/setup-waf.sh:/etc/localstack/init/ready.d/01-setup-waf.sh"
+    depends_on:
+      - waf-classic
+    networks:
+      - poison-net
+
+  waf-classic:
+    build: ./waf/classic-api
+    container_name: cookie-poisoning-waf-classic
+    ports:
+      - "4575:4575"
+    environment:
+      - PORT=4575
+    networks:
+      - poison-net
+
+networks:
+  poison-net:
+    driver: bridge
