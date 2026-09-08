@@ -1,0 +1,72 @@
+services:
+  webapp:
+    build: ./app
+    container_name: mitm-webapp
+    ports:
+      - "3500:3500"
+    environment:
+      - PORT=3500
+    networks:
+      - mitm-net
+
+  mitm-proxy:
+    build: ./app/mitm-proxy
+    container_name: mitm-hotspot
+    ports:
+      - "3580:3580"
+    environment:
+      - PORT=3580
+      - UPSTREAM_HOST=webapp
+      - UPSTREAM_PORT=3500
+    depends_on:
+      - webapp
+    networks:
+      - mitm-net
+
+  waf-proxy:
+    build: ./app/waf-proxy
+    container_name: mitm-waf-proxy
+    ports:
+      - "8580:8580"
+    environment:
+      - PORT=8580
+      - UPSTREAM_HOST=webapp
+      - UPSTREAM_PORT=3500
+      - WEB_ACL_NAME=MitM-Session-Protection
+    depends_on:
+      - webapp
+    networks:
+      - mitm-net
+
+  localstack:
+    image: localstack/localstack:3.5
+    container_name: mitm-localstack
+    ports:
+      - "4576:4566"
+    environment:
+      - SERVICES=cloudwatch,logs
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./waf/setup-waf.sh:/etc/localstack/init/ready.d/01-setup-waf.sh"
+    depends_on:
+      - waf-classic
+    networks:
+      - mitm-net
+
+  waf-classic:
+    build: ./waf/classic-api
+    container_name: mitm-waf-classic
+    ports:
+      - "4577:4577"
+    environment:
+      - PORT=4577
+    networks:
+      - mitm-net
+
+networks:
+  mitm-net:
+    driver: bridge
