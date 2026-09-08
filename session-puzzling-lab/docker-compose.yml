@@ -1,0 +1,58 @@
+services:
+  webapp:
+    build: ./app
+    container_name: session-puzzling-webapp
+    ports:
+      - "3300:3300"
+    environment:
+      - PORT=3300
+    networks:
+      - puzzle-net
+
+  waf-proxy:
+    build: ./app/waf-proxy
+    container_name: session-puzzling-waf-proxy
+    ports:
+      - "8380:8380"
+    environment:
+      - PORT=8380
+      - UPSTREAM_HOST=webapp
+      - UPSTREAM_PORT=3300
+      - WEB_ACL_NAME=Session-Puzzling-2FA-Protection
+    depends_on:
+      - webapp
+    networks:
+      - puzzle-net
+
+  localstack:
+    image: localstack/localstack:3.5
+    container_name: session-puzzling-localstack
+    ports:
+      - "4572:4566"
+    environment:
+      - SERVICES=cloudwatch,logs
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./waf/setup-waf.sh:/etc/localstack/init/ready.d/01-setup-waf.sh"
+    depends_on:
+      - waf-classic
+    networks:
+      - puzzle-net
+
+  waf-classic:
+    build: ./waf/classic-api
+    container_name: session-puzzling-waf-classic
+    ports:
+      - "4573:4573"
+    environment:
+      - PORT=4573
+    networks:
+      - puzzle-net
+
+networks:
+  puzzle-net:
+    driver: bridge
