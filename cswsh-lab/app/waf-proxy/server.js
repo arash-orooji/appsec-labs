@@ -146,7 +146,17 @@ function blockedBody(findings) {
   );
 }
 
-function writeBlocked(socketOrRes, findings, asSocket) {
+function corsHeaders(req) {
+  const origin = header(req, 'origin');
+  if (!origin || origin === 'null') return {};
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Credentials': 'true',
+    Vary: 'Origin',
+  };
+}
+
+function writeBlocked(socketOrRes, findings, asSocket, req) {
   const body = blockedBody(findings);
   const headers = {
     'Content-Type': 'application/json; charset=utf-8',
@@ -155,6 +165,7 @@ function writeBlocked(socketOrRes, findings, asSocket) {
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'Content-Length': Buffer.byteLength(body),
     Connection: 'close',
+    ...corsHeaders(req || { headers: {} }),
   };
   if (asSocket) {
     const lines = ['HTTP/1.1 403 Forbidden'];
@@ -213,7 +224,7 @@ const server = http.createServer(async (req, res) => {
     const { findings, forwardedCookie } = evaluateWaf(req);
     if (findings.length > 0) {
       console.log('[waf-proxy] BLOCK', findings.map((f) => f.rule).join(', '));
-      writeBlocked(res, findings, false);
+      writeBlocked(res, findings, false, req);
       return;
     }
 
@@ -270,7 +281,7 @@ server.on('upgrade', (req, socket, head) => {
   const { findings, forwardedCookie } = evaluateWaf(req);
   if (findings.length > 0) {
     console.log('[waf-proxy] BLOCK upgrade', findings.map((f) => f.rule).join(', '));
-    writeBlocked(socket, findings, true);
+    writeBlocked(socket, findings, true, req);
     return;
   }
 
