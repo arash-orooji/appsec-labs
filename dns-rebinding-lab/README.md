@@ -66,10 +66,10 @@ bash scripts/run-local.sh
 
 Open:
 
-- Workbench: http://127.0.0.1:3999
-- Flip gateway: http://127.0.0.1:3998
+- Workbench: http://127.0.0.1:3999 — four PAT stages, trophy, and **Replay through WAF VIP**
+- Flip gateway: http://127.0.0.1:3998 — same-origin `fetch` after `POST /flip`
 - HarborHome: http://127.0.0.1:3900
-- WAF VIP: http://127.0.0.1:8980
+- WAF VIP: http://127.0.0.1:8980 — legitimate `Host` still works; rebind names 403
 
 ```bash
 # optional packet view if dig is installed

@@ -70,13 +70,13 @@ function flagForHost(host) {
 function css() {
   return `
     :root { color-scheme: dark; }
-    body { font-family: "IBM Plex Sans", "Segoe UI", sans-serif; margin: 0; background: #0b1220; color: #e8eef7; }
+    body { font-family: Arial, Helvetica, sans-serif; font-weight: 500; margin: 0; background: #0b1220; color: #e8eef7; }
     header { background: #111b2e; border-bottom: 1px solid #24324a; padding: 1rem 1.4rem; display: flex; justify-content: space-between; align-items: baseline; }
     header strong { letter-spacing: 0.04em; }
     main { max-width: 980px; margin: 0 auto; padding: 1.4rem; line-height: 1.55; }
     a { color: #7dd3fc; }
     nav a { margin-right: 0.9rem; }
-    code, pre, .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.9em; }
+    code, pre, .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.9em; }
     button, .btn { font: inherit; padding: 0.4rem 0.8rem; background: #2563eb; color: #fff; border: 0; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; margin: 0.25rem 0.35rem 0.25rem 0; }
     button.alt { background: #334155; }
     .card { background: #111b2e; border: 1px solid #24324a; border-radius: 10px; padding: 1rem 1.1rem; margin: 1rem 0; }
@@ -86,7 +86,7 @@ function css() {
     .lab { border-left: 4px solid #818cf8; }
     table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
     th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid #24324a; vertical-align: top; }
-    pre { background: #0b1220; padding: 0.75rem; overflow: auto; border-radius: 8px; }
+    pre { background: #0b1220; padding: 0.75rem; overflow: auto; border-radius: 8px; white-space: pre-wrap; word-break: break-word; max-height: 22rem; }
     .flag { color: #86efac; }
     footer { color: #94a3b8; font-size: 0.85rem; margin-top: 2rem; }
   `;
@@ -226,22 +226,30 @@ function attackerPage() {
     later same-origin requests are proxied to HarborHome
     (<code>:${HARBOR_PORT}</code>) with <code>Host: classic.rebind.lab</code>.</p>
     <div class="card lab">
-      <button id="flip">Flip DNS (TTL expired)</button>
-      <button id="steal" class="alt">fetch /api/wan-config</button>
+      <button type="button" id="flip" onclick="doFlip()">Flip DNS (TTL expired)</button>
+      <button type="button" id="steal" class="alt" onclick="doSteal()">fetch /api/wan-config</button>
       <pre id="out">waiting…</pre>
     </div>
     <p><a href="http://127.0.0.1:${WORKBENCH_PORT}/">Workbench</a></p>
   </main>
   <script>
     const out = document.getElementById('out');
-    document.getElementById('flip').onclick = async () => {
+    async function doFlip() {
       const r = await fetch('/flip', { method: 'POST' });
       out.textContent = await r.text();
-    };
-    document.getElementById('steal').onclick = async () => {
+    }
+    async function doSteal() {
       const r = await fetch('/api/wan-config', { credentials: 'include' });
-      out.textContent = await r.text();
-    };
+      const t = await r.text();
+      try {
+        const json = JSON.parse(t);
+        out.textContent = (json.flag ? json.flag + '\\n\\n' : '') + JSON.stringify(json, null, 2);
+      } catch {
+        out.textContent = t;
+      }
+    }
+    window.doFlip = doFlip;
+    window.doSteal = doSteal;
   </script>
 </body>
 </html>`;
@@ -338,12 +346,13 @@ function workbenchPage() {
       </tbody>
     </table>
     <div class="card">
-      <button data-run="classic">1. Classic 127.0.0.1</button>
-      <button data-run="zero">2. 0.0.0.0 bypass</button>
-      <button data-run="cname-int">3. CNAME internal</button>
-      <button data-run="cname-localhost">4. CNAME localhost</button>
-      <button id="trophy" class="alt">Collect trophy</button>
-      <button id="reset" class="alt">Reset DNS hits</button>
+      <button type="button" data-run="classic" onclick="runStage('classic')">1. Classic 127.0.0.1</button>
+      <button type="button" data-run="zero" onclick="runStage('zero')">2. 0.0.0.0 bypass</button>
+      <button type="button" data-run="cname-int" onclick="runStage('cname-int')">3. CNAME internal</button>
+      <button type="button" data-run="cname-localhost" onclick="runStage('cname-localhost')">4. CNAME localhost</button>
+      <button type="button" id="trophy" class="alt" onclick="collectTrophy()">Collect trophy</button>
+      <button type="button" id="waf" class="alt" onclick="probeWaf()">Replay through WAF VIP</button>
+      <button type="button" id="reset" class="alt" onclick="resetHits()">Reset DNS hits</button>
       <p><a class="btn" href="http://127.0.0.1:${GATEWAY_PORT}/">Open flip gateway</a>
       <a class="btn alt" href="http://127.0.0.1:8980/">WAF VIP</a></p>
       <pre id="out">Click a stage. Each name's first lookup is ${ATTACKER_A}; the second is the rebind.</pre>
@@ -360,23 +369,33 @@ function workbenchPage() {
       });
       return r.json();
     }
-    document.getElementById('reset').onclick = async () => {
-      out.textContent = JSON.stringify(await post('/api/dns-reset'), null, 2);
-    };
-    document.querySelectorAll('[data-run]').forEach((btn) => {
-      btn.onclick = async () => {
-        const stage = btn.getAttribute('data-run');
-        const resolver = stage === 'classic' ? 'raw' : 'perimeter';
-        await post('/api/dns-reset');
-        const result = await post('/api/rebind-http', { stage, resolver });
-        if (result.flag) got.add(stage);
-        out.textContent = JSON.stringify(result, null, 2);
-      };
-    });
-    document.getElementById('trophy').onclick = async () => {
+    function show(prefix, obj) {
+      out.textContent = (prefix ? prefix + '\\n\\n' : '') + JSON.stringify(obj, null, 2);
+      out.scrollIntoView({ block: 'nearest' });
+    }
+    async function resetHits() {
+      show('', await post('/api/dns-reset'));
+    }
+    async function runStage(stage) {
+      const resolver = stage === 'classic' ? 'raw' : 'perimeter';
+      await post('/api/dns-reset');
+      const result = await post('/api/rebind-http', { stage, resolver });
+      if (result.flag) got.add(stage);
+      show(result.flag || '', result);
+    }
+    async function collectTrophy() {
       const r = await fetch('/api/trophy?stages=' + encodeURIComponent([...got].join(',')));
-      out.textContent = JSON.stringify(await r.json(), null, 2);
-    };
+      const json = await r.json();
+      show(json.flag || '', json);
+    }
+    async function probeWaf() {
+      const result = await post('/api/waf-probe', { host: 'classic.rebind.lab', path: '/api/wan-config' });
+      show(result.blocked ? 'WAF BLOCKED ' + result.status : '', result);
+    }
+    window.runStage = runStage;
+    window.collectTrophy = collectTrophy;
+    window.probeWaf = probeWaf;
+    window.resetHits = resetHits;
   </script>
 </body>
 </html>`;
@@ -503,6 +522,22 @@ function workbenchApp() {
     } catch (err) {
       res.status(400).json({ ok: false, error: err.message });
     }
+  });
+
+  app.post('/api/waf-probe', async (req, res) => {
+    const wafPort = Number(process.env.WAF_PORT || 8980);
+    const probeHost = String((req.body && req.body.host) || 'classic.rebind.lab');
+    const probePath = String((req.body && req.body.path) || '/api/wan-config');
+    const httpRes = await httpGet('127.0.0.1', wafPort, probeHost, probePath);
+    res.json({
+      ok: true,
+      via: `127.0.0.1:${wafPort}`,
+      host: probeHost,
+      path: probePath,
+      status: httpRes.status,
+      blocked: httpRes.status === 403,
+      body: httpRes.json || httpRes.body.slice(0, 600),
+    });
   });
 
   app.get('/api/trophy', (req, res) => {
