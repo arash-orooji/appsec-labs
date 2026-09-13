@@ -59,7 +59,15 @@ function hijackScript(defaultUrl) {
         };
         ws.onmessage = function (ev) { log(ev.data); };
         ws.onerror = function () { log('error (refused or blocked)'); };
-        ws.onclose = function (ev) { log('close ' + ev.code + ' ' + (ev.reason || '')); };
+        ws.onclose = function (ev) {
+          log('close ' + ev.code + ' ' + (ev.reason || ''));
+          try {
+            const httpUrl = url.replace(/^ws/i, 'http').replace(/^wss/i, 'https');
+            fetch(httpUrl, { credentials: 'include' }).then(function (r) {
+              return r.text().then(function (t) { log('HTTP ' + r.status + '\\n' + t); });
+            }).catch(function (e) { log(String(e)); });
+          } catch (e) { log(String(e)); }
+        };
       };
     </script>
   `;

@@ -54,8 +54,16 @@ function parseCookieHeader(raw) {
   return out;
 }
 
+function isWsPath(req) {
+  try {
+    return new URL(req.url, 'http://waf.local').pathname.startsWith('/ws/');
+  } catch {
+    return String(req.url || '').startsWith('/ws/');
+  }
+}
+
 function isWsUpgrade(req) {
-  return /websocket/i.test(header(req, 'upgrade'));
+  return /websocket/i.test(header(req, 'upgrade')) || isWsPath(req);
 }
 
 function evaluateWaf(req) {
