@@ -1,0 +1,69 @@
+services:
+  webapp:
+    build: ./app
+    container_name: dns-rebinding-webapp
+    ports:
+      - "3900:3900"
+      - "3998:3998"
+      - "3999:3999"
+      - "5354:5354/udp"
+      - "5354:5354/tcp"
+      - "5355:5355/udp"
+      - "5355:5355/tcp"
+      - "5356:5356/udp"
+      - "5356:5356/tcp"
+    environment:
+      - PORT=3900
+      - HARBOR_PORT=3900
+      - GATEWAY_PORT=3998
+      - WORKBENCH_PORT=3999
+    networks:
+      - rebind-net
+
+  waf-proxy:
+    build: ./app/waf-proxy
+    container_name: dns-rebinding-waf-proxy
+    ports:
+      - "8980:8980"
+    environment:
+      - PORT=8980
+      - UPSTREAM_HOST=webapp
+      - UPSTREAM_PORT=3900
+      - WEB_ACL_NAME=DNS-Rebinding-Protection
+    depends_on:
+      - webapp
+    networks:
+      - rebind-net
+
+  localstack:
+    image: localstack/localstack:3.5
+    container_name: dns-rebinding-localstack
+    ports:
+      - "4584:4566"
+    environment:
+      - SERVICES=cloudwatch,logs
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./waf/setup-waf.sh:/etc/localstack/init/ready.d/01-setup-waf.sh"
+    depends_on:
+      - waf-classic
+    networks:
+      - rebind-net
+
+  waf-classic:
+    build: ./waf/classic-api
+    container_name: dns-rebinding-waf-classic
+    ports:
+      - "4585:4585"
+    environment:
+      - PORT=4585
+    networks:
+      - rebind-net
+
+networks:
+  rebind-net:
+    driver: bridge

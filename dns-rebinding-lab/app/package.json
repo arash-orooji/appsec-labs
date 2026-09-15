@@ -1,0 +1,13 @@
+{
+  "name": "harborhome-dns-rebinding-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HarborHome DNS rebinding laboratory — low-TTL A/CNAME answers and same-origin flip",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
