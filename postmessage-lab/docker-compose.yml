@@ -1,0 +1,68 @@
+services:
+  webapp:
+    build: ./app
+    container_name: postmessage-webapp
+    ports:
+      - "3800:3800"
+    environment:
+      - PORT=3800
+    networks:
+      - pm-net
+
+  attacker:
+    build: ./app/attacker
+    container_name: postmessage-attacker
+    ports:
+      - "3899:3899"
+    environment:
+      - PORT=3899
+    networks:
+      - pm-net
+
+  waf-proxy:
+    build: ./app/waf-proxy
+    container_name: postmessage-waf-proxy
+    ports:
+      - "8880:8880"
+    environment:
+      - PORT=8880
+      - UPSTREAM_HOST=webapp
+      - UPSTREAM_PORT=3800
+      - WEB_ACL_NAME=PostMessage-Protection
+    depends_on:
+      - webapp
+    networks:
+      - pm-net
+
+  localstack:
+    image: localstack/localstack:3.5
+    container_name: postmessage-localstack
+    ports:
+      - "4582:4566"
+    environment:
+      - SERVICES=cloudwatch,logs
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./waf/setup-waf.sh:/etc/localstack/init/ready.d/01-setup-waf.sh"
+    depends_on:
+      - waf-classic
+    networks:
+      - pm-net
+
+  waf-classic:
+    build: ./waf/classic-api
+    container_name: postmessage-waf-classic
+    ports:
+      - "4583:4583"
+    environment:
+      - PORT=4583
+    networks:
+      - pm-net
+
+networks:
+  pm-net:
+    driver: bridge
