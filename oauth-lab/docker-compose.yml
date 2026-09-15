@@ -1,0 +1,64 @@
+services:
+  webapp:
+    build: ./app
+    container_name: oauth-webapp
+    ports:
+      - "4000:4000"
+      - "4098:4098"
+      - "4099:4099"
+    environment:
+      - NOTES_PORT=4000
+      - IDP_PORT=4098
+      - WORKBENCH_PORT=4099
+    networks:
+      - oauth-net
+
+  waf-proxy:
+    build: ./app/waf-proxy
+    container_name: oauth-waf-proxy
+    ports:
+      - "9080:9080"
+    environment:
+      - PORT=9080
+      - UPSTREAM_HOST=webapp
+      - UPSTREAM_PORT=4000
+      - IDP_HOST=webapp
+      - IDP_PORT=4098
+      - WEB_ACL_NAME=OAuth-Misconfig-Protection
+    depends_on:
+      - webapp
+    networks:
+      - oauth-net
+
+  localstack:
+    image: localstack/localstack:3.5
+    container_name: oauth-localstack
+    ports:
+      - "4586:4566"
+    environment:
+      - SERVICES=cloudwatch,logs
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./waf/setup-waf.sh:/etc/localstack/init/ready.d/01-setup-waf.sh"
+    depends_on:
+      - waf-classic
+    networks:
+      - oauth-net
+
+  waf-classic:
+    build: ./waf/classic-api
+    container_name: oauth-waf-classic
+    ports:
+      - "4587:4587"
+    environment:
+      - PORT=4587
+    networks:
+      - oauth-net
+
+networks:
+  oauth-net:
+    driver: bridge
