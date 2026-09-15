@@ -1,0 +1,58 @@
+services:
+  webapp:
+    build: ./app
+    container_name: dom-clobber-webapp
+    ports:
+      - "3700:3700"
+    environment:
+      - PORT=3700
+    networks:
+      - clobber-net
+
+  waf-proxy:
+    build: ./app/waf-proxy
+    container_name: dom-clobber-waf-proxy
+    ports:
+      - "8780:8780"
+    environment:
+      - PORT=8780
+      - UPSTREAM_HOST=webapp
+      - UPSTREAM_PORT=3700
+      - WEB_ACL_NAME=DOM-Clobbering-Protection
+    depends_on:
+      - webapp
+    networks:
+      - clobber-net
+
+  localstack:
+    image: localstack/localstack:3.5
+    container_name: dom-clobber-localstack
+    ports:
+      - "4580:4566"
+    environment:
+      - SERVICES=cloudwatch,logs
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./waf/setup-waf.sh:/etc/localstack/init/ready.d/01-setup-waf.sh"
+    depends_on:
+      - waf-classic
+    networks:
+      - clobber-net
+
+  waf-classic:
+    build: ./waf/classic-api
+    container_name: dom-clobber-waf-classic
+    ports:
+      - "4581:4581"
+    environment:
+      - PORT=4581
+    networks:
+      - clobber-net
+
+networks:
+  clobber-net:
+    driver: bridge
