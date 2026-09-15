@@ -1,0 +1,72 @@
+services:
+  webapp:
+    build: ./app
+    container_name: cswsh-webapp
+    ports:
+      - "3600:3600"
+    environment:
+      - PORT=3600
+    networks:
+      - cswsh-net
+
+  attacker:
+    build: ./app/attacker
+    container_name: cswsh-attacker
+    ports:
+      - "3699:3699"
+    environment:
+      - PORT=3699
+      - TARGET_WS=ws://127.0.0.1:3600
+      - WAF_WS=ws://127.0.0.1:8680
+    depends_on:
+      - webapp
+    networks:
+      - cswsh-net
+
+  waf-proxy:
+    build: ./app/waf-proxy
+    container_name: cswsh-waf-proxy
+    ports:
+      - "8680:8680"
+    environment:
+      - PORT=8680
+      - UPSTREAM_HOST=webapp
+      - UPSTREAM_PORT=3600
+      - WEB_ACL_NAME=CSWSH-WebSocket-Protection
+    depends_on:
+      - webapp
+    networks:
+      - cswsh-net
+
+  localstack:
+    image: localstack/localstack:3.5
+    container_name: cswsh-localstack
+    ports:
+      - "4578:4566"
+    environment:
+      - SERVICES=cloudwatch,logs
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./waf/setup-waf.sh:/etc/localstack/init/ready.d/01-setup-waf.sh"
+    depends_on:
+      - waf-classic
+    networks:
+      - cswsh-net
+
+  waf-classic:
+    build: ./waf/classic-api
+    container_name: cswsh-waf-classic
+    ports:
+      - "4579:4579"
+    environment:
+      - PORT=4579
+    networks:
+      - cswsh-net
+
+networks:
+  cswsh-net:
+    driver: bridge
